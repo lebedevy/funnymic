@@ -8,11 +8,9 @@
 
 import {
     Button,
-    FormGroup,
     InputGroup,
     NumericInput,
     Switch,
-    HTMLSelect,
     Popover,
     Menu,
     MenuItem,
@@ -22,9 +20,8 @@ import {
     Tooltip,
     Icon,
 } from '@blueprintjs/core';
-import { DatePicker } from '@blueprintjs/datetime';
-import { css, cx } from '@emotion/css';
-import styled from '@emotion/styled';
+import { DateTimePicker } from '@blueprintjs/datetime';
+import { css } from '@emotion/css';
 import { FormikErrors, FormikProps, useFormik } from 'formik';
 import { ChangeEvent, useCallback, useState } from 'react';
 import { useHistory } from 'react-router';
@@ -32,14 +29,15 @@ import {
     CenteredScreen,
     Dialog,
     Error,
-    formattedTimeString,
+    FormGroup,
+    getFormattedDate,
     LocationWrapper,
     MultiStep,
     StepLocation,
-    useWindowDimensions,
 } from './commonComponents';
+import { RowFlex, SmallHeader } from './commonStyles';
 import GoogleLocation from './GoolgeLocation';
-import SignupDialog from './SignupDialog';
+import SignupDialog, { MicDialog, PreviewMicDialog } from './SignupDialog';
 import {
     ICustomPlace,
     IForm,
@@ -47,7 +45,6 @@ import {
     ISignupSetting,
     IPlaceForm,
     ISignup,
-    ITime,
 } from './typing';
 
 const CreateMic: React.FC = () => {
@@ -58,13 +55,11 @@ const CreateMic: React.FC = () => {
         initialValues: {
             name: '',
             location: undefined,
-            date: undefined,
+            start: undefined,
+            end: undefined,
             standby: undefined,
+            setLength: 5,
             slots: 0,
-            time: {
-                start: { hour: 12, minute: 0, type: 'PM' },
-                end: { hour: 12, minute: 0, type: 'PM' },
-            },
             signupConfig: {
                 email: { use: true, required: true },
                 phone: { use: false, required: false },
@@ -83,8 +78,15 @@ const CreateMic: React.FC = () => {
                 if (values.standby.slots < 0) errors.standby = 'Invalid input';
             }
 
+            // Validate set length
+            if (values.setLength == null) errors.setLength = 'Set length is required';
+            if (values.setLength < 0) errors.setLength = 'Set length must be positive';
+
             // validate date
-            if (values.date == null) errors.date = 'Date is required';
+            if (values.start == null) errors.start = 'Start time is required';
+            if (values.end == null) errors.end = 'End time is required';
+            if (values.end && values.start && values.end < values.start)
+                errors.end = 'End time must be after start time';
 
             // Validate mic name
             if (values.name == null || values.name === '') errors.name = 'Mic name is required';
@@ -148,12 +150,10 @@ const CreateMic: React.FC = () => {
         },
     });
 
+    console.log(formik.values);
+
     return (
         <CenteredScreen>
-            <StepLocation
-                steps={[{ label: 'Details' }, { label: 'Sign up settings' }]}
-                current={current}
-            />
             <form
                 className={css`
                     flex: 1;
@@ -183,7 +183,7 @@ const CreateMic: React.FC = () => {
 };
 
 function firstPageValid(errors: FormikErrors<IForm>) {
-    const check: Array<keyof IForm> = ['name', 'location', 'date', 'time', 'slots', 'standby'];
+    const check: Array<keyof IForm> = ['name', 'location', 'start', 'end', 'slots', 'standby'];
 
     for (let i = 0; i < check.length; i++) {
         if (errors[check[i]]) return false;
@@ -214,8 +214,8 @@ const BaseSettings: React.FC<{
     formik: FormikProps<IForm>;
 }> = ({ formik }) => {
     const [openLocation, setOpenLocation] = useState(false);
-    const [openDate, setOpenDate] = useState(false);
-    const [timeOpen, setTimeOpen] = useState(false);
+    const [openStart, setOpenStart] = useState(false);
+    const [openEnd, setOpenEnd] = useState(false);
 
     const { values, errors } = formik;
     const { location } = values;
@@ -228,13 +228,15 @@ const BaseSettings: React.FC<{
         >
             <h1>Create Mic</h1>
 
-            <FormGroup label="Mic name" helperText={errors.name && <Error>{errors.name}</Error>}>
-                <InputGroup value={formik.values.name} id="name" onChange={formik.handleChange} />
+            <FormGroup label="Mic name" error={errors.name}>
+                <InputGroup
+                    large
+                    value={formik.values.name}
+                    id="name"
+                    onChange={formik.handleChange}
+                />
             </FormGroup>
-            <FormGroup
-                label="Location"
-                helperText={errors.location && <Error>{errors.location}</Error>}
-            >
+            <FormGroup label="Location" error={errors.location}>
                 {location ? (
                     <LocationWrapper>
                         {location.type === 'google' ? (
@@ -258,41 +260,52 @@ const BaseSettings: React.FC<{
                     />
                 )}
             </FormGroup>
-            <FormGroup label="Date" helperText={errors.date && <Error>{errors.date}</Error>}>
-                {values.date ? (
-                    <div>
-                        <label>{values.date.toLocaleDateString()}</label>
-                        <Button
-                            icon="delete"
-                            minimal
-                            onClick={() => formik.setValues({ ...values, date: undefined })}
-                        />
-                    </div>
+            <FormGroup label="Start time" error={errors.start}>
+                {!values.start ? (
+                    <Button
+                        text="Start time"
+                        icon="time"
+                        onClick={() => setOpenStart((prev) => !prev)}
+                    />
                 ) : (
-                    <Button text="Add date" icon="add" onClick={() => setOpenDate(true)} />
+                    <RowFlex>
+                        {getFormattedDate(values.start)}
+                        <Button minimal icon="edit" onClick={() => setOpenStart((prev) => !prev)} />
+                    </RowFlex>
                 )}
             </FormGroup>
-            <FormGroup label="Time" helperText={errors.time && <Error>{errors.time}</Error>}>
-                <div
-                    className={css`
-                        display: flex;
-                        align-items: center;
-                    `}
-                >
-                    {formattedTimeString(formik.values.time)}
-                    <Button icon="edit" minimal onClick={() => setTimeOpen((prev) => !prev)} />
-                </div>
+            <FormGroup label="End time" error={errors.end}>
+                {!values.end ? (
+                    <Button
+                        text="End time"
+                        icon="time"
+                        onClick={() => setOpenEnd((prev) => !prev)}
+                    />
+                ) : (
+                    <RowFlex>
+                        {getFormattedDate(values.end)}
+                        <Button minimal icon="edit" onClick={() => setOpenEnd((prev) => !prev)} />
+                    </RowFlex>
+                )}
             </FormGroup>
-            <FormGroup
-                label="Number of slots"
-                helperText={errors.slots && <Error>{errors.slots}</Error>}
-            >
+            <FormGroup label="Set length (minutes)" error={errors.setLength}>
+                <NumericInput
+                    value={values.setLength}
+                    onValueChange={(n) =>
+                        formik.setValues({ ...values, setLength: Number.isNaN(n) ? 0 : n })
+                    }
+                />
+                minutes
+            </FormGroup>
+            <FormGroup label="Number of slots" error={errors.slots}>
                 <NumericInput
                     id="slots"
                     fill
                     inputMode="numeric"
                     value={values.slots}
-                    onValueChange={(slots) => formik.setValues({ ...values, slots })}
+                    onValueChange={(n) =>
+                        formik.setValues({ ...values, slots: Number.isNaN(n) ? 0 : n })
+                    }
                     min={0}
                 />
             </FormGroup>
@@ -301,10 +314,10 @@ const BaseSettings: React.FC<{
                 className={css`
                     padding-bottom: 2rem;
                 `}
-                helperText={errors.standby && <Error>{errors.standby}</Error>}
+                error={errors.standby}
             >
                 <ControlGroup>
-                    <HTMLSelect
+                    {/* <HTMLSelect
                         value={formik.values.standby?.type ?? 'standby'}
                         onChange={(e) =>
                             formik.setValues({
@@ -319,16 +332,16 @@ const BaseSettings: React.FC<{
                             { label: 'Standby slot', value: 'standby' },
                             { label: 'Extra slots', value: 'extra' },
                         ]}
-                    />
+                    /> */}
                     <NumericInput
                         fill
                         value={formik.values.standby?.slots ?? 0}
-                        onValueChange={(slots) =>
+                        onValueChange={(n) =>
                             formik.setValues({
                                 ...formik.values,
                                 standby: {
-                                    ...(formik.values.standby ?? { type: 'standby' }),
-                                    slots,
+                                    ...(formik.values.standby ?? { type: 'extra' }),
+                                    slots: Number.isNaN(n) ? 0 : n,
                                 },
                             })
                         }
@@ -338,12 +351,26 @@ const BaseSettings: React.FC<{
             <Dialog isOpen={openLocation} onClose={() => setOpenLocation(false)}>
                 <LocationSetting formik={formik} close={() => setOpenLocation(false)} />
             </Dialog>
-            <Dialog isOpen={openDate} onClose={() => setOpenDate(false)} center>
-                <MicDate close={() => setOpenDate(false)} formik={formik} />
+
+            <Dialog isOpen={openStart} onClose={() => setOpenStart(false)}>
+                {openStart && (
+                    <>
+                        <RowFlex justify="center">
+                            <SmallHeader>Set start time</SmallHeader>
+                        </RowFlex>
+                        <DateTime close={() => setOpenStart(false)} formik={formik} type="start" />
+                    </>
+                )}
             </Dialog>
-            <Dialog isOpen={timeOpen} onClose={() => setTimeOpen(false)} center>
-                <h1>Add mic time</h1>
-                <MicTime formik={formik} />
+            <Dialog isOpen={openEnd} onClose={() => setOpenEnd(false)}>
+                {openEnd && (
+                    <>
+                        <RowFlex justify="center">
+                            <SmallHeader>Set start time</SmallHeader>
+                        </RowFlex>
+                        <DateTime close={() => setOpenEnd(false)} formik={formik} type="end" />
+                    </>
+                )}
             </Dialog>
         </div>
     );
@@ -351,135 +378,50 @@ const BaseSettings: React.FC<{
 
 export default CreateMic;
 
-const MicDate: React.FC<{ close: () => void; formik: FormikProps<IForm> }> = ({
-    close,
-    formik,
-}) => {
-    const [date, setDate] = useState(formik.values.date);
+const DateTime: React.FC<{ type: 'start' | 'end'; close: () => void; formik: FormikProps<IForm> }> =
+    ({ close, formik, type }) => {
+        const [time, setTime] = useState(
+            formik.values[type] ??
+                (() => {
+                    const d = new Date();
+                    d.setMinutes(0);
+                    console.log(d);
+                    return d;
+                })()
+        );
 
-    return (
-        <>
-            <h1>Select date</h1>
-            <DatePicker
-                highlightCurrentDay
-                canClearSelection
-                value={formik.values.date}
-                onChange={(e) => setDate(e)}
-            />
-            <div
-                className={css`
-                    margin: 1rem 1rem 0;
-                    display: flex;
-                    justify-content: space-between;
-                    width: 100%;
-                `}
-            >
-                <Button text="Cancel" onClick={close} />
-                <Button
-                    intent="primary"
-                    text="Submit"
-                    onClick={() => {
-                        formik.setValues({ ...formik.values, date });
-                        close();
-                    }}
-                />
-            </div>
-        </>
-    );
-};
+        const setMicTime = () => {
+            const values = { ...formik.values, [type]: time };
+            // if (type === 'end' && formik.values.slots === 0 && formik.values.start) {
+            //     const slots =
+            //     values.slots=
+            // }
 
-const MicTime: React.FC<{ formik: FormikProps<IForm> }> = ({ formik }) => {
-    const { width } = useWindowDimensions();
-
-    return (
-        <div
-            className={css`
-                ${width < 600 && 'flex-direction: column;'}
-            `}
-        >
-            <TimeInput formik={formik} type="start" />
-            <div
-                className={css`
-                    display: flex;
-                    align-items: center;
-                    padding: 0 1rem;
-                    text-align: center;
-                    padding: 0.4rem;
-                    max-width: 150px;
-                    justify-content: center;
-                `}
-            >
-                to
-            </div>
-            <TimeInput formik={formik} type="end" />
-        </div>
-    );
-};
-
-const TimeInputCss = styled.input`
-    max-width: 50px;
-    border-width: 1px;
-    border-style: inset;
-    box-shadow: 0 0 0 0 rgb(19 124 189 / 0%), 0 0 0 0 rgb(19 124 189 / 0%),
-        inset 0 0 0 1px rgb(16 22 26 / 15%), inset 0 1px 1px rgb(16 22 26 / 20%);
-    border-radius: 3px;
-    padding: 0 10px;
-    line-height: 30px;
-`;
-
-const TimeInput: React.FC<{ formik: FormikProps<IForm>; type: 'start' | 'end' }> = ({
-    formik,
-    type,
-}) => {
-    const validate =
-        (min: number, max: number, setItem: (n: number) => void) =>
-        (e: ChangeEvent<HTMLInputElement>) => {
-            const val = e.currentTarget.value;
-            if (val.length > 2) return;
-
-            try {
-                const hr = parseInt(val);
-                if (val === '') return setItem(0);
-                if (Number.isNaN(hr) || hr > max || hr < min) return;
-                setItem(hr);
-            } catch (e) {
-                console.log(e);
-            }
+            formik.setValues(values);
+            close();
         };
 
-    const current = formik.values.time?.[type];
-
-    const setValue = (item: keyof ITime, val: string | number) => {
-        formik.setValues({
-            ...formik.values,
-            time: {
-                ...formik.values.time,
-                [type]: { ...current, [item]: val },
-            },
-        });
+        return (
+            <>
+                <RowFlex justify="center">
+                    <DateTimePicker
+                        value={time}
+                        timePickerProps={{ useAmPm: true }}
+                        onChange={(d) => setTime(d)}
+                    />
+                </RowFlex>
+                <RowFlex
+                    className={css`
+                        padding: 1rem 0 0 0;
+                    `}
+                    justify="space-between"
+                >
+                    <Button text="Cancel" onClick={close} />
+                    <Button intent="primary" text="Set time" onClick={setMicTime} />
+                </RowFlex>
+            </>
+        );
     };
-
-    const validateHour = validate(0, 12, (hour) => setValue('hour', hour));
-    const validateMin = validate(0, 59, (minute) => setValue('minute', minute));
-
-    return (
-        <div
-            className={css`
-                display: flex;
-                align-items: center;
-            `}
-        >
-            <TimeInputCss value={current.hour} onChange={validateHour} inputMode="numeric" />
-            :
-            <TimeInputCss value={current.minute} inputMode="numeric" onChange={validateMin} />
-            <HTMLSelect
-                options={['AM', 'PM']}
-                value={current.type}
-                onChange={(e) => setValue('type', e.currentTarget.value)}
-            />
-        </div>
-    );
-};
 
 const LocationSetting: React.FC<{ close: () => void; formik: FormikProps<IForm> }> = ({
     formik,
@@ -591,6 +533,7 @@ const LocationSetting: React.FC<{ close: () => void; formik: FormikProps<IForm> 
                     <div>
                         <label>Search and select location</label>
                         <InputGroup
+                            large
                             fill
                             autoComplete="off"
                             id="locationPopover"
@@ -722,7 +665,9 @@ const SignupSettings: React.FC<{
                 />
             </FormGroup>
             {/* Preview */}
-            <SignupDialog
+            <PreviewMicDialog
+                title="Sign up"
+                submitText="Sign up"
                 settings={settings}
                 isOpen={previewOpen}
                 close={() => setPreviewOpen(false)}
@@ -743,7 +688,7 @@ const SignupSubSetting: React.FC<{
                 className={css`
                     margin: 0;
                 `}
-                helperText={<Error>{errors?.use}</Error>}
+                error={errors?.use}
             >
                 <Switch
                     label={label}
@@ -757,7 +702,7 @@ const SignupSubSetting: React.FC<{
                         padding: 0 1rem 0.5rem 1rem;
                         margin: 0;
                     `}
-                    helperText={<Error>{errors?.required}</Error>}
+                    error={errors?.required}
                 >
                     <Switch
                         checked={setting.required}

@@ -4,14 +4,6 @@ export type IGoogleLocation = {
     place_id: string;
 };
 
-export type ITime = {
-    hour: number;
-    minute: number;
-    type: 'AM' | 'PM';
-};
-
-export type IMicTime = { start: ITime; end: ITime };
-
 export type IMicResult = {
     date: string;
     id: number;
@@ -19,7 +11,10 @@ export type IMicResult = {
     place_id?: string;
     location: ICustomPlace | IPlaceForm;
     slots: number;
-    time: { start: ITime; end: ITime };
+    start: Date;
+    end: Date;
+    setLength: number;
+    current: number;
     userId: number;
     waitingList?: { type: string; slots: number };
     signupConfig: ISignup;
@@ -46,9 +41,10 @@ type IWait = {
 
 export type IForm = {
     name: string;
+    setLength: number;
     location?: IPlaceForm | ICustomPlace;
-    date?: Date;
-    time: IMicTime;
+    start?: Date;
+    end?: Date;
     slots: number;
     standby?: IWait;
     signupConfig: ISignup;
@@ -61,5 +57,6 @@ export type IMicPerfomer = {
     id: number;
     checkedIn: boolean;
     setComplete: boolean;
-    setMissed: boolean;
+    skipped: boolean;
+    order: number;
 };

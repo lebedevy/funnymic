@@ -1,4 +1,4 @@
-export const fetchDetails = (id: string) => {
+export const fetchDetails = (id: number) => {
     return fetch('/micdetails', {
         body: JSON.stringify({ micId: id }),
         method: 'POST',

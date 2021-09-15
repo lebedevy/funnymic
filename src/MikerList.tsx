@@ -2,6 +2,9 @@ import {
     Button,
     Card,
     Icon,
+    IconName,
+    IconProps,
+    Intent,
     Menu,
     MenuDivider,
     MenuItem,
@@ -13,19 +16,12 @@ import {
 import { css } from '@emotion/css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchMikers } from './api';
-import { Dialog, yfetch } from './commonComponents';
+import { Dialog, useMic, yfetch } from './commonComponents';
 import { ColumnFlex, RowFlex, SmallHeader } from './commonStyles';
-import SignupDialog from './SignupDialog';
+import useMicStore from './micStore';
+import SignupDialog, { MicDialog } from './SignupDialog';
 import { IMicPerfomer, IMicResult } from './typing';
 import useUserStore, { IUser } from './userStore';
-
-const getCurrentMiker = (mikers: IMicPerfomer[]) => {
-    return mikers.find(
-        ({ checkedIn, setMissed, setComplete }) =>
-            (checkedIn && (!setComplete || (setMissed && !setComplete))) ||
-            (!checkedIn && !setMissed)
-    )?.id;
-};
 
 export const removeSignedInUser = async (
     mic: IMicResult | undefined,
@@ -49,8 +45,8 @@ const useMikerList = (
     mic: IMicResult | undefined,
     { admin }: { admin: boolean } = { admin: false }
 ) => {
-    const [mikers, setMikers] = useState<IMicPerfomer[]>([]);
-    const [current, setCurrent] = useState<number | undefined>();
+    const [mikers, setMikers] = useState<IMicPerfomer[]>();
+    const setMic = useMicStore((store) => store.setCurrentMic);
 
     const id = mic?.id;
 
@@ -64,16 +60,46 @@ const useMikerList = (
         }
     }, [id]);
 
+    // Probably not the right place for this
+    useEffect(() => {
+        if (id != null) {
+            const host =
+                process.env.NODE_ENV === 'production' ? window.location.host : 'localhost:8080';
+            let ws = new WebSocket(`ws://${host}/socket/mic`);
+            ws.onopen = () => {
+                console.log('Opening ws connection');
+                ws.send(id.toString());
+            };
+            ws.onmessage = (event) => {
+                console.log('::ws event');
+                const { mic, mikers } = JSON.parse(event.data);
+                if (mic) setMic(mic);
+                if (mikers) setMikers(mikers);
+            };
+            return () => ws.close();
+        }
+    }, [id, setMic]);
+
     useEffect(() => {
         refreshMikers();
     }, [refreshMikers]);
 
-    useEffect(() => {
-        setCurrent(getCurrentMiker(mikers));
-    }, [mikers]);
-
-    console.log(mikers);
-    console.log(current);
+    const setNext = useCallback(
+        async (id: number) => {
+            if (mikers && mic) {
+                const res = await yfetch('/mic/performer/setnext', {
+                    curPerfId: mikers.find((m) => m.order === mic.current)?.id,
+                    movePerfId: id,
+                    micId: mic.id,
+                });
+                if (res.ok) {
+                    setMic(await res.json());
+                    refreshMikers();
+                }
+            }
+        },
+        [mikers, mic, refreshMikers, setMic]
+    );
 
     return {
         mikers,
@@ -88,16 +114,17 @@ const useMikerList = (
             >
                 {mic && (
                     <>
-                        {mikers.length > 0 ? (
+                        {mikers && mikers.length > 0 ? (
                             <>
                                 {mikers.slice(0, mic.slots).map((miker) => (
                                     <Miker
-                                        current={current}
+                                        current={mic.current}
                                         type={'active'}
                                         refreshMikers={refreshMikers}
                                         mic={mic}
                                         miker={miker}
                                         admin={admin}
+                                        setNext={() => setNext(miker.id)}
                                     />
                                 ))}
                                 {mikers.length > mic.slots && (
@@ -105,19 +132,24 @@ const useMikerList = (
                                         <h2>{mic.waitingList?.type}</h2>
                                         {mikers.slice(mic.slots).map((miker, ind) => (
                                             <Miker
-                                                current={current}
+                                                current={mic.current}
                                                 type={'waiting'}
                                                 refreshMikers={refreshMikers}
                                                 mic={mic}
                                                 miker={miker}
                                                 admin={admin}
+                                                setNext={() => setNext(miker.id)}
                                             />
                                         ))}
                                     </>
                                 )}
                             </>
                         ) : (
-                            <h2>No one has signed up yet :)</h2>
+                            <h2>
+                                {admin && !mic.signupOpen
+                                    ? 'Open signup to allow performers to signup'
+                                    : 'No one has signed up yet :)'}
+                            </h2>
                         )}
                     </>
                 )}
@@ -134,8 +166,10 @@ const Miker: React.FC<{
     miker: IMicPerfomer;
     refreshMikers: () => void;
     type: 'waiting' | 'active';
-    current: number | undefined;
-}> = ({ current, miker, admin = false, refreshMikers, mic, type }) => {
+    current: number;
+    setNext: () => void;
+}> = ({ current, miker, admin = false, refreshMikers, mic, type, setNext }) => {
+    const [, setMic] = useMic(mic.id);
     const ref = useRef();
     const user = useUserStore((state) => state.user);
     // const [hover, setHover] = useState(false);
@@ -160,7 +194,10 @@ const Miker: React.FC<{
                         'Content-Type': 'application/json',
                     },
                 });
-                if (res.ok) refreshMikers();
+                if (res.ok) {
+                    setMic(await res.json());
+                    refreshMikers();
+                }
             }
         } else {
             // remove anon user
@@ -197,10 +234,9 @@ const Miker: React.FC<{
                 ${type === 'active'
                     ? 'box-shadow: 0 0 0 1px #0f9960, 0 0 0 #0f9960, 0 0 0 #0f9960;'
                     : 'box-shadow: 0 0 0 1px #d9822b, 0 0 0 #d9822b, 0 0 0 #d9822b;'}
-                ${miker.setComplete && 'background-color: lightgray;'}
+                // ${miker.setComplete && 'background-color: lightgray;'}
+                ${miker.checkedIn && 'background-color: #0f99650;'}
             `}
-            // onMouseEnter={() => setHover(true)}
-            // onMouseLeave={() => setHover(false)}
         >
             <Toaster ref={ref as any} />
             <RowFlex
@@ -219,97 +255,14 @@ const Miker: React.FC<{
                 <Text
                     className={css`
                         ${mic.checkinOpen && !miker.checkedIn && 'color: gray;'}
-                        ${mic.checkinOpen &&
-                        (miker.setComplete || (!miker.checkedIn && miker.setMissed)) &&
-                        'text-decoration: line-through;'}
+                        ${mic.checkinOpen && miker.setComplete && 'text-decoration: line-through;'}
                     `}
                 >
                     {miker.name}
                 </Text>
-                {mic.checkinOpen && miker.checkedIn ? (
-                    <Tooltip content={miker.setComplete ? 'Set complete' : 'User checked in'}>
-                        <Icon
-                            className={css`
-                                margin-left: 0.5rem;
-                                color: green;
-                            `}
-                            icon="tick-circle"
-                        />
-                    </Tooltip>
-                ) : (
-                    miker.setMissed && (
-                        <Tooltip content="No show">
-                            <Icon
-                                className={css`
-                                    margin-left: 0.5rem;
-                                    color: #da4167;
-                                `}
-                                icon="heart-broken"
-                            />
-                        </Tooltip>
-                    )
-                )}
+                {mic.checkinOpen && <StatusIcon miker={miker} />}
             </RowFlex>
-            {/* {admin &&
-                current === miker.id &&
-                (mic.checkinOpen ? (
-                    miker.checkedIn ? (
-                        <Button
-                            text="Set complete"
-                            intent="primary"
-                            onClick={async () => {
-                                const res = await yfetch('/mic/completeset', {
-                                    userId: miker.id,
-                                    micId: mic.id,
-                                });
-                                if (res.ok) refreshMikers();
-                            }}
-                        />
-                    ) : (
-                        !miker.setMissed && (
-                            <Button
-                                text="Spot missed"
-                                intent="primary"
-                                onClick={async () => {
-                                    const res = await yfetch('/mic/missedset', {
-                                        userId: miker.id,
-                                        micId: mic.id,
-                                    });
-                                    if (res.ok) refreshMikers();
-                                }}
-                            />
-                        )
-                    )
-                ) : null)} */}
-            {/* {admin &&
-                mic.checkinOpen &&
-                current === miker.id &&
-                (miker.checkedIn ? (
-                    <Button
-                        text="Set complete"
-                        intent="primary"
-                        onClick={async () => {
-                            const res = await yfetch('/mic/completeset', {
-                                userId: miker.id,
-                                micId: mic.id,
-                            });
-                            if (res.ok) refreshMikers();
-                        }}
-                    />
-                ) : (
-                    <Button
-                        text="Check in"
-                        intent="primary"
-                        onClick={async () => {
-                            const res = await yfetch('/mic/completeset', {
-                                userId: miker.id,
-                                micId: mic.id,
-                            });
-                            if (res.ok) refreshMikers();
-                        }}
-                    />
-                ))} */}
-            {current === miker.id && <RowFlex>Current performer</RowFlex>}
+            {mic.checkinOpen && current === miker.order && <RowFlex>Current performer</RowFlex>}
             {mic.checkinOpen ? (
                 admin && (
                     <Popover
@@ -323,44 +276,42 @@ const Miker: React.FC<{
                                     icon="tick"
                                     onClick={checkinUser}
                                 />
-
-                                <MenuItem text="Set completed" icon="tick-circle" />
-                                <MenuDivider />
                                 <MenuItem
-                                    text="Skip"
-                                    icon="arrow-right"
-                                    onClick={async () => {
-                                        const res = await yfetch('/mic/missedset', {
-                                            userId: miker.id,
-                                            micId: mic.id,
-                                        });
-                                        if (res.ok) refreshMikers();
-                                    }}
+                                    disabled={
+                                        !miker.skipped ||
+                                        miker.setComplete ||
+                                        current === miker.order
+                                    }
+                                    icon="pin"
+                                    text="Set as next"
+                                    onClick={setNext}
                                 />
-                                {/* <MenuItem
-                                    intent="danger"
-                                    onClick={remove}
-                                    text="Remove"
-                                    icon="delete"
-                                /> */}
                             </Menu>
                         }
                     >
-                        <Button minimal icon="cog" />
+                        <Button minimal icon="more" />
                     </Popover>
                 )
             ) : (user && user.id === miker.id) || (!user && miker.type !== 'user') || admin ? (
                 <Button icon="delete" minimal onClick={remove} />
             ) : null}
-            <SignupDialog
-                toastRef={ref}
-                isOpen={removeDialog}
-                close={() => setRemoveDialog(false)}
-                onSignup={removeUserApi}
-                callback={refreshMikers}
+
+            <MicDialog
+                title="Remove from list"
                 settings={mic.signupConfig}
                 submitText="Remove user"
+                onSubmit={async (values) => {
+                    const res = await removeUserApi(values);
+
+                    if (res.ok) {
+                        setMic(await res.json());
+                        refreshMikers();
+                    }
+                }}
+                isOpen={removeDialog}
+                close={() => setRemoveDialog(false)}
             />
+
             <ConfirmDialog
                 open={confirm}
                 close={() => setConfirm(false)}
@@ -399,5 +350,54 @@ const ConfirmDialog: React.FC<{
                 />
             </RowFlex>
         </Dialog>
+    );
+};
+
+const StatusIcon: React.FC<{ miker: IMicPerfomer }> = ({ miker }) => {
+    let content = 'Not checked in';
+    let icon: IconName = 'circle';
+    let intent: Intent = 'none';
+
+    if (miker.checkedIn) {
+        content = 'Checked in';
+        icon = 'tick';
+        intent = 'success';
+    }
+
+    if (miker.skipped) {
+        content = 'Skipped';
+        icon = 'selection';
+        intent = 'warning';
+    }
+
+    if (miker.setComplete) {
+        content = 'Set comlete';
+        icon = 'tick-circle';
+        intent = 'success';
+    }
+
+    return (
+        <>
+            <Tooltip content={content}>
+                <Icon
+                    className={css`
+                        margin-left: 0.5rem;
+                    `}
+                    icon={icon}
+                    intent={intent}
+                />
+            </Tooltip>
+            {miker.skipped && miker.checkedIn && !miker.setComplete && (
+                <Tooltip content="Checked in">
+                    <Icon
+                        className={css`
+                            margin-left: 0.5rem;
+                        `}
+                        icon="tick"
+                        intent="success"
+                    />
+                </Tooltip>
+            )}
+        </>
     );
 };

@@ -8,9 +8,11 @@ import {
 } from '@blueprintjs/core';
 import { css } from '@emotion/css';
 import styled from '@emotion/styled';
-import { ChangeEvent, Fragment, useEffect, useState } from 'react';
+import { ChangeEvent, Fragment, useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { IMicResult, IMicTime } from './typing';
+import { fetchDetails } from './api';
+import useMicStore from './micStore';
+import { IMicResult } from './typing';
 
 export const CenteredScreen = styled.div`
     flex: 1;
@@ -226,6 +228,7 @@ export const PasswordInput: React.FC<{
     return (
         <FormGroup label="Password" error={error}>
             <InputGroup
+                large
                 id="password"
                 onChange={onChange}
                 value={value}
@@ -243,12 +246,6 @@ export const PasswordInput: React.FC<{
     );
 };
 
-export const formattedTimeString = (time: IMicTime) => {
-    return `${time.start.hour}:${!time.start.minute ? '00' : time.start.minute} to ${
-        time.end.hour
-    }:${!time.end.minute ? '00' : time.end.minute}`;
-};
-
 export function useQuery() {
     return new URLSearchParams(useLocation().search);
 }
@@ -264,7 +261,6 @@ export const yfetch = (url: string, body: any) => {
 };
 
 export const getMicSignupState = (mic: IMicResult): 'open' | 'waiting' | 'closed' | 'full' => {
-    console.log(mic);
     if (!mic.signupOpen) return 'closed';
     if (mic.slots <= mic.slotsFilled) {
         if (mic.waitingList) {
@@ -275,4 +271,81 @@ export const getMicSignupState = (mic: IMicResult): 'open' | 'waiting' | 'closed
         return 'full';
     }
     return 'open';
+};
+
+const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+];
+
+const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export function getFormattedDate(d: Date | string) {
+    let date = d;
+    if (typeof date === 'string') {
+        date = new Date(d);
+    }
+    return `${days[date.getDay()]}, ${date.getDate()} ${
+        months[date.getMonth()]
+    } ${date.getFullYear()} ${formatTime(date.getHours())}:${formatTime(date.getMinutes())}`;
+}
+
+export function getFormattedMicTime(s: Date | string, e: Date | string) {
+    let start = s;
+    let end = e;
+    if (typeof start === 'string') {
+        start = new Date(s);
+    }
+    if (typeof end === 'string') {
+        end = new Date(e);
+    }
+
+    return `${formatTime(start.getHours())}:${formatTime(start.getMinutes())} - ${formatTime(
+        end.getHours()
+    )}:${formatTime(end.getMinutes())}`;
+}
+
+function formatTime(time: number) {
+    const t = time + '';
+    if (t.length < 2) return '0' + time;
+    return t;
+}
+
+export const useMic = (
+    micId: number | string
+): [IMicResult | undefined, (mic: IMicResult) => void] => {
+    let id = typeof micId === 'string' ? parseInt(micId, 10) : micId;
+    let mic = useMicStore((store) => store.currentMic);
+
+    const setCurrentMic = useMicStore((store) => store.setCurrentMic);
+    const clearCurrentMic = useMicStore((store) => store.clearCurrentMic);
+    if (mic?.id !== id) {
+        mic = undefined;
+        clearCurrentMic();
+    }
+
+    const getMic = useCallback(async () => {
+        const mic = await fetchDetails(id);
+
+        if (mic.ok) setCurrentMic(await mic.json());
+    }, [id, setCurrentMic]);
+
+    useEffect(() => {
+        if (!mic) {
+            console.log('here');
+            getMic();
+        }
+    }, [getMic, mic, id]);
+
+    return [mic, setCurrentMic];
 };

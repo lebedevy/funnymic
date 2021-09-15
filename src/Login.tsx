@@ -52,8 +52,7 @@ export const Login: React.FC<{
             if (res.ok) {
                 login(await res.json());
                 if (callback) callback();
-            } else if (res.status === 401)
-                (ref.current as any)?.show({ message: await res.text(), intent: 'danger' });
+            } else (ref.current as any)?.show({ message: await res.text(), intent: 'danger' });
         },
     });
 
@@ -61,7 +60,7 @@ export const Login: React.FC<{
         <ColumnFlex>
             <Toaster ref={ref as any} />
             <FormGroup label="Email" error={errors.email}>
-                <InputGroup type="email" id="email" value={email} onChange={handleChange} />
+                <InputGroup large type="email" id="email" value={email} onChange={handleChange} />
             </FormGroup>
             <PasswordInput onChange={handleChange} value={password} error={errors.password} />
             <FormGroup>

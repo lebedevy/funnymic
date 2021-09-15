@@ -2,7 +2,7 @@ import { Button, Card, Tag } from '@blueprintjs/core';
 import { css } from '@emotion/css';
 import { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import { formattedTimeString, getMicSignupState } from './commonComponents';
+import { getFormattedDate, getFormattedMicTime, getMicSignupState } from './commonComponents';
 import { RowFlex } from './commonStyles';
 import GoogleLocation from './GoolgeLocation';
 import { IMicResult } from './typing';
@@ -52,9 +52,9 @@ const Mic: React.FC<{ mic: IMicResult }> = ({ mic }) => {
                         padding-right: 3rem;
                     `}
                 >
-                    {new Date(mic.date).toLocaleDateString()}
+                    {new Date(mic.start).toLocaleDateString()}
                 </div>
-                {formattedTimeString(mic.time)}
+                {getFormattedMicTime(mic.start, mic.end)}
             </RowFlex>
             <MicStatus mic={mic} />
             {mic.location.type === 'custom' ? (

@@ -65,13 +65,14 @@ const Signup: React.FC = () => {
             <h1>{`Create an account`}</h1>
             <Toaster ref={ref as any} />
             <FormGroup label="First name" error={errors.first}>
-                <InputGroup id="first" onChange={formik.handleChange} value={values.first} />
+                <InputGroup large id="first" onChange={formik.handleChange} value={values.first} />
             </FormGroup>
             <FormGroup label="Last name" error={errors.last}>
-                <InputGroup id="last" onChange={formik.handleChange} value={values.last} />
+                <InputGroup large id="last" onChange={formik.handleChange} value={values.last} />
             </FormGroup>
             <FormGroup label="Email" error={errors.email}>
                 <InputGroup
+                    large
                     type="email"
                     id="email"
                     onChange={formik.handleChange}

@@ -32,14 +32,16 @@ const Mics: React.FC = () => {
                     `}
                 >
                     {/* <MicListSettings search={search} setSearch={setSearch} /> */}
-                    {mics
-                        .filter(
-                            (mic) =>
-                                !search || mic.name.toLowerCase().includes(search.toLowerCase())
-                        )
-                        .map((mic) => (
-                            <Mic mic={mic} />
-                        ))}
+                    {mics.length > 0 ? (
+                        mics
+                            .filter(
+                                (mic) =>
+                                    !search || mic.name.toLowerCase().includes(search.toLowerCase())
+                            )
+                            .map((mic) => <Mic mic={mic} />)
+                    ) : (
+                        <SmallHeader>No mics to show</SmallHeader>
+                    )}
                 </div>
             ) : (
                 <CenteredScreen>
@@ -92,6 +94,7 @@ const MicListSettings: React.FC<{ setSearch: (s: string) => void; search: string
                     `}
                 >
                     <InputGroup
+                        large
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         rightElement={

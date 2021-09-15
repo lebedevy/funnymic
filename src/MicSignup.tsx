@@ -1,14 +1,14 @@
-import { Button, InputGroup, Spinner, Toaster } from '@blueprintjs/core';
+import { Button, Spinner, Toaster } from '@blueprintjs/core';
 import { css } from '@emotion/css';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router';
-import { fetchDetails } from './api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useHistory, useLocation, useParams } from 'react-router';
 import {
     CenteredScreen,
     Dialog,
-    formattedTimeString,
     FormGroup,
+    getFormattedDate,
     getMicSignupState,
+    useMic,
     useQuery,
     yfetch,
 } from './commonComponents';
@@ -16,23 +16,21 @@ import { RowFlex, SmallHeader } from './commonStyles';
 import GoogleLocation from './GoolgeLocation';
 import { Login } from './Login';
 import useMikerList, { removeSignedInUser } from './MikerList';
-import SignupDialog from './SignupDialog';
-import { IMicResult } from './typing';
+import SignupDialog, { MicDialog } from './SignupDialog';
 import useUserStore from './userStore';
 
 const MicSignup: React.FC = () => {
     const ref = useRef();
     const { id } = useParams<{ id: string }>();
     const { user } = useUserStore((state) => state);
-    const [mic, setMic] = useState<IMicResult>();
+    const [mic, setMic] = useMic(id);
     const [showSignup, setShowSignup] = useState(false);
     const query = useQuery();
     const urlLoc = useLocation();
     const [showLogin, setShowLogin] = useState(false);
     const [showCheckin, setShowCheckin] = useState(false);
     const [loginEmail, setLoginEmail] = useState('');
-
-    const [loading, setLoading] = useState(true);
+    const history = useHistory();
 
     const { mikers, list, refreshMikers } = useMikerList(mic);
 
@@ -46,23 +44,9 @@ const MicSignup: React.FC = () => {
         }
     }, [login, urlLoc.state, user]);
 
-    const getMic = useCallback(async () => {
-        setLoading(true);
-        const mic = await fetchDetails(id);
-        if (mic.ok) setMic((await mic.json()) as IMicResult);
-
-        setLoading(false);
-    }, [id]);
-
-    useEffect(() => {
-        getMic();
-    }, [getMic]);
-
-    console.log(mic);
-
     const { location } = mic ?? {};
 
-    const micSignupState = mic ? getMicSignupState(mic) : undefined;
+    const micSignupState = useMemo(() => (mic ? getMicSignupState(mic) : undefined), [mic]);
 
     const trySignup = async (anon?: any) => {
         if (micSignupState) {
@@ -81,6 +65,7 @@ const MicSignup: React.FC = () => {
 
                 if (res) {
                     if (res.ok) {
+                        setMic(await res.json());
                         refreshMikers();
                     } else if (res.status === 400)
                         (ref.current as any)?.show({ message: await res.text(), intent: 'danger' });
@@ -112,12 +97,10 @@ const MicSignup: React.FC = () => {
     };
 
     const signedUp = useMemo(() => {
-        return user && mikers.some((miker) => miker.id === user.id);
+        return user && mikers && mikers.some((miker) => miker.id === user.id);
     }, [user, mikers]);
 
-    console.log(mic);
-
-    return !loading && mic && mikers ? (
+    return mic && mikers ? (
         <div
             className={css`
                 display: flex;
@@ -139,7 +122,7 @@ const MicSignup: React.FC = () => {
                 `}
             >
                 {mic.date && <label>{new Date(mic.date).toLocaleDateString()}</label>}
-                <label>{formattedTimeString(mic.time)}</label>
+                <label>{getFormattedDate(mic.start)}</label>
             </RowFlex>
             {location ? (
                 location.type === 'custom' ? (
@@ -180,23 +163,61 @@ const MicSignup: React.FC = () => {
             </RowFlex>
             {list}
             {/* dialogs */}
-            <SignupDialog
-                onSignup={(anon: any) => trySignup(anon)}
-                callback={refreshMikers}
-                toastRef={ref}
+
+            <MicDialog
+                title="Sign up"
+                submitText="Sign up"
                 settings={mic.signupConfig}
                 isOpen={showSignup}
                 close={() => setShowSignup(false)}
+                onSubmit={async (values) => {
+                    const res = await trySignup(values);
+
+                    if (res) {
+                        if (res.ok) {
+                            setMic(await res.json());
+                            refreshMikers();
+                            setShowSignup(false);
+                        } else {
+                            ref?.current &&
+                                (ref.current as any)?.show({
+                                    message: await res.text(),
+                                    intent: 'danger',
+                                });
+                            if (res.status === 403) {
+                                history.push(`/mic/signup/${id}?login=true`, {
+                                    email: values.email,
+                                });
+                                setShowSignup(false);
+                            }
+                        }
+                    }
+                }}
             />
-            <SignupDialog
-                onSignup={(anon: any) => tryCheckin(anon)}
-                callback={refreshMikers}
-                toastRef={ref}
+            <MicDialog
+                title="Check in"
+                submitText="Check in"
                 settings={mic.signupConfig}
                 isOpen={showCheckin}
                 close={() => setShowCheckin(false)}
-                submitText="Check in"
+                onSubmit={async (values) => {
+                    const res = await tryCheckin(values);
+
+                    if (res) {
+                        if (res.ok) {
+                            refreshMikers();
+                            setShowCheckin(false);
+                        } else {
+                            ref?.current &&
+                                (ref.current as any)?.show({
+                                    message: await res.text(),
+                                    intent: 'danger',
+                                });
+                        }
+                    }
+                }}
             />
+
             <Dialog isOpen={showLogin} onClose={() => setShowLogin(false)}>
                 <h1>Sign in</h1>
                 <p>An account already exists with this email. Please sign in to sign up</p>

@@ -1,12 +1,10 @@
-import { Button, DialogProps, InputGroup, Toaster } from '@blueprintjs/core';
+import { Button, DialogProps, InputGroup } from '@blueprintjs/core';
 import { css } from '@emotion/css';
 import { FormikErrors, useFormik } from 'formik';
 import { isValidPhoneNumber, parsePhoneNumber } from 'libphonenumber-js';
-import { useRef } from 'react';
-
 import { useHistory, useParams } from 'react-router';
 import { Dialog, FormGroup, validateEmail } from './commonComponents';
-import { ISignup } from './typing';
+import { IMicResult, ISignup } from './typing';
 
 type Form = {
     name: string;
@@ -14,18 +12,71 @@ type Form = {
     phone?: string;
 };
 
-const SignupDialog: React.FC<
+// const AnonSignupDialog = () => {
+//     const history = useHistory();
+//     const { id } = useParams<{ id: string }>();
+
+//     const onSubmit = async (values: Form) => {
+//         if (id != null) {
+//             console.log(values);
+
+//             const res = await onSignup({ ...values, phone });
+
+//             if (res.ok) {
+//                 if (callback) callback(await res.json());
+//                 close();
+//             } else if (res.status === 403) {
+//                 toastRef?.current &&
+//                     (toastRef.current as any)?.show({
+//                         message: 'Email is tied to an account. Please login',
+//                         intent: 'danger',
+//                     });
+//                 history.push(`/mic/signup/${id}?login=true`, { email: values.email });
+//                 close();
+//             } else {
+//                 toastRef?.current &&
+//                     (toastRef.current as any)?.show({
+//                         message: await res.text(),
+//                         intent: 'danger',
+//                     });
+//             }
+//         }
+//     };
+
+//     return <MicDialog onSubmit={onSubmit} />;
+// };
+
+export const MicDialog: React.FC<
     DialogProps & {
-        onSignup?: (anon: any) => Promise<Response | undefined>;
-        callback?: () => void;
-        toastRef?: any;
         close: () => void;
         settings: ISignup;
-        submitText?: string;
+        submitText: string;
+        onSubmit: (values: Form) => void;
+        title: string;
     }
-> = ({ submitText, callback, close, settings, onSignup, toastRef, ...props }) => {
-    const history = useHistory();
-    const { id } = useParams<{ id: string }>();
+> = (props) => {
+    return (
+        <PreviewMicDialog
+            {...props}
+            onSubmit={(values) => {
+                const phone = values.phone
+                    ? parsePhoneNumber(values.phone, 'US').number.toString()
+                    : undefined;
+                props.onSubmit({ ...values, phone });
+            }}
+        />
+    );
+};
+
+export const PreviewMicDialog: React.FC<
+    DialogProps & {
+        close: () => void;
+        settings: ISignup;
+        submitText: string;
+        onSubmit?: (values: Form) => void;
+        title: string;
+    }
+> = ({ submitText, close, settings, title, onSubmit, ...props }) => {
     const { email, phone } = settings;
 
     const { values, errors, handleChange, submitForm } = useFormik({
@@ -51,37 +102,7 @@ const SignupDialog: React.FC<
             }
             return errors;
         },
-        onSubmit: async (values) => {
-            if (id != null) {
-                console.log(values);
-                const phone = values.phone ? parsePhoneNumber(values.phone, 'US') : undefined;
-
-                if (onSignup) {
-                    const res = await onSignup({ ...values, phone });
-
-                    if (res) {
-                        if (res.ok) {
-                            if (callback) callback();
-                            close();
-                        } else if (res.status === 403) {
-                            toastRef?.current &&
-                                (toastRef.current as any)?.show({
-                                    message: 'Email is tied to an account. Please login',
-                                    intent: 'danger',
-                                });
-                            history.push(`/mic/signup/${id}?login=true`, { email: values.email });
-                            close();
-                        } else {
-                            toastRef?.current &&
-                                (toastRef.current as any)?.show({
-                                    message: await res.text(),
-                                    intent: 'danger',
-                                });
-                        }
-                    }
-                }
-            }
-        },
+        onSubmit: onSubmit ? onSubmit : () => {},
     });
 
     return (
@@ -91,9 +112,9 @@ const SignupDialog: React.FC<
                     padding: 1rem;
                 `}
             >
-                <h1>Sign up</h1>
+                <h1>{title}</h1>
                 <FormGroup error={errors.name} label="Name" labelInfo="(required)">
-                    <InputGroup value={values.name} id="name" onChange={handleChange} />
+                    <InputGroup large value={values.name} id="name" onChange={handleChange} />
                 </FormGroup>
                 {email.use && (
                     <FormGroup
@@ -102,6 +123,7 @@ const SignupDialog: React.FC<
                         labelInfo={email.required ? '(required)' : ''}
                     >
                         <InputGroup
+                            large
                             type="email"
                             value={values.email}
                             id="email"
@@ -115,7 +137,7 @@ const SignupDialog: React.FC<
                         label="Phone"
                         labelInfo={phone.required ? '(required)' : ''}
                     >
-                        <InputGroup value={values.phone} id="phone" onChange={handleChange} />
+                        <InputGroup large value={values.phone} id="phone" onChange={handleChange} />
                     </FormGroup>
                 )}
                 <div
@@ -125,11 +147,11 @@ const SignupDialog: React.FC<
                     `}
                 >
                     <Button text="Cancel" onClick={close} />
-                    <Button text={submitText ?? 'Sign up'} intent="primary" onClick={submitForm} />
+                    <Button text={submitText} intent="primary" onClick={submitForm} />
                 </div>
             </div>
         </Dialog>
     );
 };
 
-export default SignupDialog;
+export default MicDialog;
