@@ -3,10 +3,8 @@ import {
     Card,
     Icon,
     IconName,
-    IconProps,
     Intent,
     Menu,
-    MenuDivider,
     MenuItem,
     Popover,
     Text,
@@ -17,9 +15,9 @@ import { css } from '@emotion/css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchMikers } from './api';
 import { Dialog, useMic, yfetch } from './commonComponents';
-import { ColumnFlex, RowFlex, SmallHeader } from './commonStyles';
+import { ColumnFlex, RowFlex } from './commonStyles';
 import useMicStore from './micStore';
-import SignupDialog, { MicDialog } from './SignupDialog';
+import { MicDialog } from './SignupDialog';
 import { IMicPerfomer, IMicResult } from './typing';
 import useUserStore, { IUser } from './userStore';
 

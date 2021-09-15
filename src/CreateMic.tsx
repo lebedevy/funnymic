@@ -436,7 +436,7 @@ const LocationSetting: React.FC<{ close: () => void; formik: FormikProps<IForm> 
         if (searchVal && searchVal !== '') {
             try {
                 setFetchError(undefined);
-                const res = await fetch(`/getplaces?search=${searchVal}`);
+                const res = await fetch(`/mic/getplaces?search=${searchVal}`);
                 const places = await res.json();
                 console.log(places);
                 setPlaces(places);
