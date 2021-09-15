@@ -138,7 +138,7 @@ const CreateMic: React.FC = () => {
         },
         onSubmit: async (values) => {
             console.log(values);
-            const res = await fetch('/mic', {
+            const res = await fetch('/mic/create', {
                 body: JSON.stringify({ mic: values }),
                 method: 'POST',
                 headers: {

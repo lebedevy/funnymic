@@ -14,7 +14,7 @@ const Mics: React.FC = () => {
 
     const fetchMics = async () => {
         setLoading(true);
-        const res = await fetch('/mics');
+        const res = await fetch('/mic/mics');
         setMics((await res.json()) as IMicResult[]);
         setLoading(false);
     };

@@ -7,7 +7,7 @@ const Homepage: React.FC = () => {
     const [mics, setMics] = useState<IMicResult[]>([]);
 
     const fetchMics = async () => {
-        const res = await fetch('/admin/mics');
+        const res = await fetch('/mic/admin/mics');
         setMics((await res.json()) as IMicResult[]);
     };
 
