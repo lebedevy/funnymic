@@ -111,7 +111,7 @@ const ManageMiker: React.FC<{
                 <RowFlex
                     justify="space-between"
                     className={css`
-                        padding: 1rem 0;
+                        padding: 1rem 0 1.3rem 0;
                         font-size: 1.2rem;
                     `}
                 >
@@ -131,15 +131,16 @@ const ManageMiker: React.FC<{
                     </div>
                     <div>
                         <Button
+                            className={css`
+                                margin-right: 1rem;
+                            `}
                             icon={isRunning ? 'pause' : 'play'}
-                            minimal
                             onClick={() =>
                                 isRunning ? pause() : started ? resume() : startTimer()
                             }
                         />
                         <Button
                             icon="reset"
-                            minimal
                             onClick={() => {
                                 pause();
                                 setStarted(false);
@@ -162,7 +163,6 @@ const ManageMiker: React.FC<{
                         ) : (
                             <Button
                                 icon="tick"
-                                minimal
                                 text="Check in"
                                 disabled={miker.checkedIn}
                                 onClick={checkinUser}
@@ -172,16 +172,16 @@ const ManageMiker: React.FC<{
                     <FormGroup>
                         <Button
                             icon="tick-circle"
-                            minimal
                             text="Set complete"
+                            intent="success"
                             onClick={completeSet}
                         />
                     </FormGroup>
                     <FormGroup>
                         <Button
                             icon="step-forward"
-                            minimal
                             text="Skip"
+                            intent="warning"
                             onClick={async () => {
                                 const res = await yfetch('/mic/skip', {
                                     userId: miker.id,

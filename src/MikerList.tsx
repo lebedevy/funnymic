@@ -305,6 +305,7 @@ const Miker: React.FC<{
                     if (res.ok) {
                         setMic(await res.json());
                         refreshMikers();
+                        setRemoveDialog(false);
                     }
                 }}
                 isOpen={removeDialog}

@@ -72,7 +72,14 @@ const ManageMic: React.FC = () => {
     return (
         <>
             {mic ? (
-                <>
+                <div
+                    className={css`
+                        max-height: 100%;
+                        postition: relative;
+                        display: flex;
+                        flex-direction: column;
+                    `}
+                >
                     <RowFlex justify="center">
                         <SmallHeader>{mic.name}</SmallHeader>
                         {mic.checkinOpen && (
@@ -129,11 +136,17 @@ const ManageMic: React.FC = () => {
                             refreshMikers={refreshMikers}
                         />
                     )}
-                </>
+                    <div
+                        className={css`
+                            overflow: auto;
+                        `}
+                    >
+                        {list}
+                    </div>
+                </div>
             ) : (
                 <Spinner />
             )}
-            {list}
         </>
     );
 };

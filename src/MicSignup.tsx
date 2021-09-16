@@ -50,11 +50,15 @@ const MicSignup: React.FC = () => {
 
     const trySignup = async (anon?: any) => {
         if (micSignupState) {
-            if (micSignupState === 'open') {
-                return yfetch('/mic/signup', { micId: id, anon });
-            } else if (micSignupState === 'waiting') {
-                return yfetch('/mic/waitinglist/signup', { micId: id, anon });
-            }
+            const body: any = { micId: id };
+
+            let url = '/mic';
+            if (anon) body.anon = anon;
+            else url += '/user';
+            if (micSignupState === 'waiting') url += '/waitinglist';
+            url += '/signup';
+
+            return yfetch(url, body);
         }
     };
 
