@@ -108,6 +108,7 @@ const useMikerList = (
                     padding: 2rem 0;
                     width: 100%;
                     overflow: auto;
+                    height: 100%;
                 `}
             >
                 {mic && (

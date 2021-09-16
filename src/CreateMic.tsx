@@ -22,6 +22,7 @@ import {
 } from '@blueprintjs/core';
 import { DateTimePicker } from '@blueprintjs/datetime';
 import { css } from '@emotion/css';
+import styled from '@emotion/styled';
 import { FormikErrors, FormikProps, useFormik } from 'formik';
 import { ChangeEvent, useCallback, useState } from 'react';
 import { useHistory } from 'react-router';
@@ -46,6 +47,10 @@ import {
     IPlaceForm,
     ISignup,
 } from './typing';
+
+const Screen = styled.div`
+    max-height: 100%;
+`;
 
 const CreateMic: React.FC = () => {
     const history = useHistory();
@@ -102,7 +107,10 @@ const CreateMic: React.FC = () => {
                 const { location } = values;
                 if (
                     (location.type === 'custom' &&
-                        (location.location == null || location.location === '')) ||
+                        (location.address == null ||
+                            location.address === '' ||
+                            location.name == null ||
+                            location.name === '')) ||
                     (location.type === 'google' &&
                         (!location.place_id ||
                             !location.place_id ||
@@ -153,7 +161,7 @@ const CreateMic: React.FC = () => {
     console.log(formik.values);
 
     return (
-        <CenteredScreen>
+        <Screen>
             <form
                 className={css`
                     flex: 1;
@@ -169,7 +177,20 @@ const CreateMic: React.FC = () => {
                     <SignupSettings formik={formik} />
                 )}
             </form>
-            <MultiStep
+            <RowFlex
+                justify="center"
+                className={css`
+                    position: fixed;
+                    bottom: 0;
+                    height: 4rem;
+                    background-color: white;
+                    border-top: 1px solid #00000050;
+                    width: 100%;
+                `}
+            >
+                <Button large intent="primary" text="Create" onClick={formik.submitForm} />
+            </RowFlex>
+            {/* <MultiStep
                 steps={[{ label: 'Details' }, { label: 'Sign up settings' }]}
                 current={current}
                 valid={
@@ -177,8 +198,8 @@ const CreateMic: React.FC = () => {
                 }
                 controlStep={setCurrent}
                 submit={formik.submitForm}
-            />
-        </CenteredScreen>
+            /> */}
+        </Screen>
     );
 };
 
@@ -224,6 +245,7 @@ const BaseSettings: React.FC<{
         <div
             className={css`
                 width: 90%;
+                padding-bottom: 3rem;
             `}
         >
             <h1>Create Mic</h1>
@@ -242,7 +264,14 @@ const BaseSettings: React.FC<{
                         {location.type === 'google' ? (
                             <GoogleLocation location={location} />
                         ) : (
-                            <CustomLocation location={location} />
+                            // <CustomLocation location={location} />
+                            <GoogleLocation
+                                location={{
+                                    place_id: '',
+                                    formatted_address: location.address,
+                                    name: location.name,
+                                }}
+                            />
                         )}
                         <Button
                             icon="delete"
@@ -290,6 +319,7 @@ const BaseSettings: React.FC<{
             </FormGroup>
             <FormGroup label="Set length (minutes)" error={errors.setLength}>
                 <NumericInput
+                    large
                     value={values.setLength}
                     onValueChange={(n) =>
                         formik.setValues({ ...values, setLength: Number.isNaN(n) ? 0 : n })
@@ -299,6 +329,7 @@ const BaseSettings: React.FC<{
             </FormGroup>
             <FormGroup label="Number of slots" error={errors.slots}>
                 <NumericInput
+                    large
                     id="slots"
                     fill
                     inputMode="numeric"
@@ -334,6 +365,7 @@ const BaseSettings: React.FC<{
                         ]}
                     /> */}
                     <NumericInput
+                        large
                         fill
                         value={formik.values.standby?.slots ?? 0}
                         onValueChange={(n) =>
@@ -349,7 +381,7 @@ const BaseSettings: React.FC<{
                 </ControlGroup>
             </FormGroup>
             <Dialog isOpen={openLocation} onClose={() => setOpenLocation(false)}>
-                <LocationSetting formik={formik} close={() => setOpenLocation(false)} />
+                <SimpleLocation formik={formik} close={() => setOpenLocation(false)} />
             </Dialog>
 
             <Dialog isOpen={openStart} onClose={() => setOpenStart(false)}>
@@ -423,6 +455,44 @@ const DateTime: React.FC<{ type: 'start' | 'end'; close: () => void; formik: For
         );
     };
 
+const SimpleLocation: React.FC<{ close: () => void; formik: FormikProps<IForm> }> = ({
+    formik,
+    close,
+}) => {
+    const { address: lAddress = '', name: lName = '' } =
+        formik.values.location?.type === 'custom' ? formik.values.location : {};
+    const [name, setName] = useState(lName);
+    const [address, setAddress] = useState(lAddress);
+
+    const add = () => {
+        formik.setValues({ ...formik.values, location: { type: 'custom', name, address } });
+        close();
+    };
+
+    return (
+        <div>
+            <RowFlex justify="center">
+                <SmallHeader>Add location</SmallHeader>
+            </RowFlex>
+            <FormGroup label="Name (required)">
+                <InputGroup required large onChange={(e) => setName(e.target.value)} value={name} />
+            </FormGroup>
+            <FormGroup label="Address (required)" error={formik.errors.location}>
+                <InputGroup large onChange={(e) => setAddress(e.target.value)} value={address} />
+            </FormGroup>
+            <RowFlex
+                justify="space-between"
+                className={css`
+                    margin: 1rem 0 0 0;
+                `}
+            >
+                <Button text="Cancel" onClick={close} />
+                <Button text="Add" onClick={add} intent="primary" disabled={!name || !address} />
+            </RowFlex>
+        </div>
+    );
+};
+
 const LocationSetting: React.FC<{ close: () => void; formik: FormikProps<IForm> }> = ({
     formik,
     close,
@@ -467,71 +537,76 @@ const LocationSetting: React.FC<{ close: () => void; formik: FormikProps<IForm> 
         <>
             <h1>Search location</h1>
             {location == null ? (
-                <Popover
-                    popoverClassName={css`
-                        max-height: 250px;
-                        overflow: auto;
-                        max-width: 90vw;
-                    `}
-                    position="bottom-left"
-                    minimal
-                    content={
-                        fetchError ? (
-                            <Error>{fetchError}</Error>
-                        ) : loading ? (
-                            <div
-                                className={css`
-                                    width: 90vw;
-                                    padding: 0.5rem;
-                                `}
-                            >
-                                <Spinner />
-                            </div>
-                        ) : (
-                            <Menu>
-                                {search != null && search !== '' && (
-                                    <>
-                                        <MenuItem
-                                            text={
-                                                <GoogleLocation
-                                                    location={{
+                <>
+                    <label>Search and select location</label>
+                    <Popover
+                        popoverClassName={css`
+                            max-height: 250px;
+                            overflow: auto;
+                            max-width: 90vw;
+                        `}
+                        position="bottom-left"
+                        minimal
+                        content={
+                            fetchError ? (
+                                <Error>{fetchError}</Error>
+                            ) : loading ? (
+                                <div
+                                    className={css`
+                                        width: 90vw;
+                                        padding: 0.5rem;
+                                    `}
+                                >
+                                    <Spinner />
+                                </div>
+                            ) : (
+                                <Menu>
+                                    {search != null && search !== '' && (
+                                        <>
+                                            <MenuItem
+                                                text={
+                                                    <GoogleLocation
+                                                        location={{
+                                                            name: search,
+                                                            formatted_address:
+                                                                'Use custom location',
+                                                            place_id: '',
+                                                        }}
+                                                    />
+                                                }
+                                                onClick={() =>
+                                                    update({
+                                                        type: 'custom',
                                                         name: search,
-                                                        formatted_address: 'Use custom location',
-                                                        place_id: '',
-                                                    }}
-                                                />
-                                            }
-                                            onClick={() =>
-                                                update({ type: 'custom', location: search })
-                                            }
-                                        />
-                                        <MenuDivider />
-                                    </>
-                                )}
-                                {places.length === 0 ? (
-                                    <label
-                                        className={css`
-                                            width: 90vw;
-                                            display: block;
-                                            padding: 0.5rem;
-                                        `}
-                                    >
-                                        No results
-                                    </label>
-                                ) : (
-                                    places.map((p) => (
-                                        <MenuItem
-                                            onClick={() => update({ type: 'google', ...p })}
-                                            text={<GoogleLocation location={p} />}
-                                        />
-                                    ))
-                                )}
-                            </Menu>
-                        )
-                    }
-                >
-                    <div>
-                        <label>Search and select location</label>
+                                                        address: '',
+                                                    })
+                                                }
+                                            />
+                                            <MenuDivider />
+                                        </>
+                                    )}
+                                    {places.length === 0 ? (
+                                        <label
+                                            className={css`
+                                                width: 90vw;
+                                                display: block;
+                                                padding: 0.5rem;
+                                            `}
+                                        >
+                                            No results
+                                        </label>
+                                    ) : (
+                                        places.map((p) => (
+                                            <MenuItem
+                                                onClick={() => update({ type: 'google', ...p })}
+                                                text={<GoogleLocation location={p} />}
+                                            />
+                                        ))
+                                    )}
+                                </Menu>
+                            )
+                        }
+                    >
                         <InputGroup
                             large
                             fill
@@ -540,8 +615,8 @@ const LocationSetting: React.FC<{ close: () => void; formik: FormikProps<IForm> 
                             value={search}
                             onChange={getPlaces}
                         />
-                    </div>
-                </Popover>
+                    </Popover>
+                </>
             ) : location.type === 'custom' ? (
                 <LocationWrapper>
                     <CustomLocation location={location} />
@@ -577,7 +652,7 @@ const CustomLocation: React.FC<{ location: ICustomPlace }> = ({ location }) => {
                     font-weight: 700;
                 `}
             >
-                {location.location}
+                {location.name}
             </label>
         </div>
     );

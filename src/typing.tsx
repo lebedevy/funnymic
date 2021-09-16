@@ -25,7 +25,7 @@ export type IMicResult = {
 
 export type IPlaceForm = IGoogleLocation & { type: 'google' };
 
-export type ICustomPlace = { type: 'custom'; location: string };
+export type ICustomPlace = { type: 'custom'; name: string; address: string };
 
 export type ISignupSetting = { use: boolean; required: boolean };
 

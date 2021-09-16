@@ -14,6 +14,8 @@ const Mic: React.FC<{ mic: IMicResult }> = ({ mic }) => {
 
     const owner = user && user.id === mic.userId;
 
+    console.log(mic);
+
     return (
         <Card
             interactive
@@ -58,7 +60,15 @@ const Mic: React.FC<{ mic: IMicResult }> = ({ mic }) => {
             </RowFlex>
             <MicStatus mic={mic} />
             {mic.location.type === 'custom' ? (
-                mic.location.location
+                <GoogleLocation
+                    condensed
+                    minimal
+                    location={{
+                        place_id: '',
+                        formatted_address: mic.location.address,
+                        name: mic.location.name,
+                    }}
+                />
             ) : (
                 <GoogleLocation condensed minimal location={mic.location} />
             )}

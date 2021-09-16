@@ -1,4 +1,5 @@
 import { Button, InputGroup, Toaster } from '@blueprintjs/core';
+import { css } from '@emotion/css';
 import { FormikErrors, useFormik } from 'formik';
 import { useRef } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -9,9 +10,16 @@ import useUserStore from './userStore';
 export const LoginScreen: React.FC = () => {
     const history = useHistory();
     return (
-        <CenteredScreen>
+        <div
+            className={css`
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            `}
+        >
             <Login callback={() => history.push('/')} />
-        </CenteredScreen>
+        </div>
     );
 };
 

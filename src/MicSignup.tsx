@@ -126,7 +126,13 @@ const MicSignup: React.FC = () => {
             </RowFlex>
             {location ? (
                 location.type === 'custom' ? (
-                    location.location
+                    <GoogleLocation
+                        location={{
+                            place_id: '',
+                            formatted_address: location.address,
+                            name: location.name,
+                        }}
+                    />
                 ) : (
                     <GoogleLocation location={location} />
                 )

@@ -60,6 +60,9 @@ export const MultiStep: React.FC<{
     return (
         <SpaceBetween
             className={css`
+                background-color: white;
+                position: fixed;
+                bottom: 0;
                 border-top: 1px solid #00000040;
                 padding: 1rem;
                 align-items: center;
@@ -295,9 +298,15 @@ export function getFormattedDate(d: Date | string) {
     if (typeof date === 'string') {
         date = new Date(d);
     }
+
+    let hour = date.getHours();
+    if (hour > 12) {
+        hour %= 12;
+    } else if (hour === 0) hour = 12;
+
     return `${days[date.getDay()]}, ${date.getDate()} ${
         months[date.getMonth()]
-    } ${date.getFullYear()} ${formatTime(date.getHours())}:${formatTime(date.getMinutes())}`;
+    } ${date.getFullYear()} ${formatTime(hour)}:${formatTime(date.getMinutes())}`;
 }
 
 export function getFormattedMicTime(s: Date | string, e: Date | string) {

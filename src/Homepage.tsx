@@ -8,7 +8,7 @@ const Homepage: React.FC = () => {
 
     const fetchMics = async () => {
         const res = await fetch('/mic/admin/mics');
-        setMics((await res.json()) as IMicResult[]);
+        if (res.ok) setMics((await res.json()) as IMicResult[]);
     };
 
     useEffect(() => {

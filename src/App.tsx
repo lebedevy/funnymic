@@ -28,10 +28,11 @@ import MicSignup from './MicSignup';
 import { LoginScreen } from './Login';
 
 const Container = styled.div`
-    height: 100vh;
+    max-height: 100%;
+    height: 100%;
     width: 100wh;
-    display: flex;
-    flex-direction: column;
+    // display: flex;
+    // flex-direction: column;
 `;
 
 function App() {
@@ -110,7 +111,7 @@ const AppNavabar: React.FC = () => {
     };
 
     return (
-        <Navbar>
+        <Navbar fixedToTop>
             <NavbarGroup>
                 <NavbarHeading onClick={() => history.push('/')}>Open Mic</NavbarHeading>
                 <NavbarDivider />
