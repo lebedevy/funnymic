@@ -63,7 +63,7 @@ const useMikerList = (
         if (id != null) {
             const host =
                 process.env.NODE_ENV === 'production' ? window.location.host : 'localhost:8080';
-            let ws = new WebSocket(`ws://${host}/socket/mic`);
+            let ws = new WebSocket(`wss://${host}/socket/mic`);
             ws.onopen = () => {
                 console.log('Opening ws connection');
                 ws.send(id.toString());
