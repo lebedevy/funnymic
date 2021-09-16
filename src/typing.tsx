@@ -21,6 +21,7 @@ export type IMicResult = {
     signupOpen: boolean;
     slotsFilled: number;
     checkinOpen: boolean;
+    hide: boolean;
 };
 
 export type IPlaceForm = IGoogleLocation & { type: 'google' };

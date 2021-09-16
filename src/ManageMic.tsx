@@ -129,12 +129,14 @@ const ManageMic: React.FC = () => {
                         </RowFlex>
                     )}
                     {mic.checkinOpen && current && (
-                        <ManageMiker
-                            setMic={setMic}
-                            miker={current}
-                            mic={mic}
-                            refreshMikers={refreshMikers}
-                        />
+                        <RowFlex justify="center">
+                            <ManageMiker
+                                setMic={setMic}
+                                miker={current}
+                                mic={mic}
+                                refreshMikers={refreshMikers}
+                            />
+                        </RowFlex>
                     )}
                     <div
                         className={css`

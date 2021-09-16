@@ -1,20 +1,24 @@
-import { Button, Card, Tag } from '@blueprintjs/core';
+import { Button, Card, Menu, MenuItem, Popover, Tag } from '@blueprintjs/core';
 import { css } from '@emotion/css';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getFormattedDate, getFormattedMicTime, getMicSignupState } from './commonComponents';
+import {
+    getFormattedDate,
+    getFormattedMicTime,
+    getMicSignupState,
+    yfetch,
+} from './commonComponents';
 import { RowFlex } from './commonStyles';
 import GoogleLocation from './GoolgeLocation';
 import { IMicResult } from './typing';
 import useUserStore from './userStore';
 
-const Mic: React.FC<{ mic: IMicResult }> = ({ mic }) => {
+const Mic: React.FC<{ fetchMics: () => void; mic: IMicResult }> = ({ fetchMics, mic }) => {
     const history = useHistory();
     const user = useUserStore((state) => state.user);
+    const [openSetting, setOpenSetting] = useState(false);
 
     const owner = user && user.id === mic.userId;
-
-    console.log(mic);
 
     return (
         <Card
@@ -35,13 +39,37 @@ const Mic: React.FC<{ mic: IMicResult }> = ({ mic }) => {
             >
                 <h2>{mic.name}</h2>
                 {owner && (
-                    <Button
-                        icon="cog"
-                        minimal
-                        onClick={(e) => {
-                            e.stopPropagation();
-                        }}
-                    />
+                    <Popover
+                        isOpen={openSetting}
+                        content={
+                            <Menu>
+                                <MenuItem
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const res = await yfetch('/mic/hide', {
+                                            hide: !mic.hide,
+                                            micId: mic.id,
+                                        });
+                                        if (res.ok) {
+                                            fetchMics();
+                                            setOpenSetting(false);
+                                        }
+                                    }}
+                                    text={mic.hide ? 'Show' : 'Hide'}
+                                />
+                            </Menu>
+                        }
+                        onClose={() => setOpenSetting(false)}
+                    >
+                        <Button
+                            icon="cog"
+                            minimal
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenSetting(true);
+                            }}
+                        />
+                    </Popover>
                 )}
             </RowFlex>
             <RowFlex

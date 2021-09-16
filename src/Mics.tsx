@@ -38,7 +38,7 @@ const Mics: React.FC = () => {
                                 (mic) =>
                                     !search || mic.name.toLowerCase().includes(search.toLowerCase())
                             )
-                            .map((mic) => <Mic mic={mic} />)
+                            .map((mic) => <Mic mic={mic} fetchMics={fetchMics} />)
                     ) : (
                         <SmallHeader>No mics to show</SmallHeader>
                     )}

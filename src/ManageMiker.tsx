@@ -69,6 +69,8 @@ const ManageMiker: React.FC<{
                 border-radius: 3px;
                 padding: 1rem;
                 margin: 0.5rem;
+                max-width: 600px;
+                width: 100%;
             `}
         >
             <RowFlex justify="space-between">

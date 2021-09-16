@@ -22,7 +22,7 @@ const Homepage: React.FC = () => {
             `}
         >
             {mics.map((mic) => (
-                <Mic mic={mic} />
+                <Mic mic={mic} fetchMics={fetchMics} />
             ))}
         </div>
     );
