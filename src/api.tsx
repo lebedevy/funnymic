@@ -1,5 +1,5 @@
 export const fetchDetails = (id: number) => {
-    return fetch('/micdetails', {
+    return fetch('/mic/micdetails', {
         body: JSON.stringify({ micId: id }),
         method: 'POST',
         headers: {
