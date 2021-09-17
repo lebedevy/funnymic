@@ -1,4 +1,4 @@
-import { Button, Drawer, Switch, InputGroup, Spinner } from '@blueprintjs/core';
+import { Button, Drawer, Switch, InputGroup, Spinner, Icon } from '@blueprintjs/core';
 import { css } from '@emotion/css';
 import { useEffect, useState } from 'react';
 import { CenteredScreen } from './commonComponents';

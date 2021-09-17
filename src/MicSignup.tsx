@@ -1,7 +1,7 @@
 import { Button, Spinner, Toaster } from '@blueprintjs/core';
 import { css } from '@emotion/css';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router';
+import { useMemo, useRef, useState } from 'react';
+import { useParams } from 'react-router';
 import {
     CenteredScreen,
     Dialog,
@@ -9,14 +9,13 @@ import {
     getFormattedDate,
     getMicSignupState,
     useMic,
-    useQuery,
     yfetch,
 } from './commonComponents';
 import { RowFlex, SmallHeader } from './commonStyles';
 import GoogleLocation from './GoolgeLocation';
 import { Login } from './Login';
 import useMikerList, { removeSignedInUser } from './MikerList';
-import SignupDialog, { MicDialog } from './SignupDialog';
+import { MicDialog } from './SignupDialog';
 import useUserStore from './userStore';
 
 const MicSignup: React.FC = () => {
@@ -25,24 +24,11 @@ const MicSignup: React.FC = () => {
     const { user } = useUserStore((state) => state);
     const [mic, setMic] = useMic(id);
     const [showSignup, setShowSignup] = useState(false);
-    const query = useQuery();
-    const urlLoc = useLocation();
     const [showLogin, setShowLogin] = useState(false);
     const [showCheckin, setShowCheckin] = useState(false);
     const [loginEmail, setLoginEmail] = useState('');
-    const history = useHistory();
 
     const { mikers, list, refreshMikers } = useMikerList(mic);
-
-    let login = !!query.get('login');
-
-    useEffect(() => {
-        if (login && !user) {
-            const email = ((urlLoc.state as any)?.email ?? '') as string;
-            setShowLogin(true);
-            setLoginEmail(email);
-        }
-    }, [login, urlLoc.state, user]);
 
     const { location } = mic ?? {};
 
@@ -195,9 +181,8 @@ const MicSignup: React.FC = () => {
                                     intent: 'danger',
                                 });
                             if (res.status === 403) {
-                                history.push(`/mic/signup/${id}?login=true`, {
-                                    email: values.email,
-                                });
+                                setLoginEmail(values.email);
+                                setShowLogin(true);
                                 setShowSignup(false);
                             }
                         }

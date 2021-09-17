@@ -40,10 +40,12 @@ const Mic: React.FC<{ fetchMics: () => void; mic: IMicResult }> = ({ fetchMics, 
                 <h2>{mic.name}</h2>
                 {owner && (
                     <Popover
+                        minimal
                         isOpen={openSetting}
                         content={
                             <Menu>
                                 <MenuItem
+                                    icon={mic.hide ? 'eye-open' : 'eye-off'}
                                     onClick={async (e) => {
                                         e.stopPropagation();
                                         const res = await yfetch('/mic/hide', {

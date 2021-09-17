@@ -2,49 +2,14 @@ import { Button, DialogProps, InputGroup } from '@blueprintjs/core';
 import { css } from '@emotion/css';
 import { FormikErrors, useFormik } from 'formik';
 import { isValidPhoneNumber, parsePhoneNumber } from 'libphonenumber-js';
-import { useHistory, useParams } from 'react-router';
 import { Dialog, FormGroup, validateEmail } from './commonComponents';
-import { IMicResult, ISignup } from './typing';
+import { ISignup } from './typing';
 
 type Form = {
     name: string;
     email: string;
     phone?: string;
 };
-
-// const AnonSignupDialog = () => {
-//     const history = useHistory();
-//     const { id } = useParams<{ id: string }>();
-
-//     const onSubmit = async (values: Form) => {
-//         if (id != null) {
-//             console.log(values);
-
-//             const res = await onSignup({ ...values, phone });
-
-//             if (res.ok) {
-//                 if (callback) callback(await res.json());
-//                 close();
-//             } else if (res.status === 403) {
-//                 toastRef?.current &&
-//                     (toastRef.current as any)?.show({
-//                         message: 'Email is tied to an account. Please login',
-//                         intent: 'danger',
-//                     });
-//                 history.push(`/mic/signup/${id}?login=true`, { email: values.email });
-//                 close();
-//             } else {
-//                 toastRef?.current &&
-//                     (toastRef.current as any)?.show({
-//                         message: await res.text(),
-//                         intent: 'danger',
-//                     });
-//             }
-//         }
-//     };
-
-//     return <MicDialog onSubmit={onSubmit} />;
-// };
 
 export const MicDialog: React.FC<
     DialogProps & {
